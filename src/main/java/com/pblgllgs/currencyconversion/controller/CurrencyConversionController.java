@@ -2,6 +2,9 @@ package com.pblgllgs.currencyconversion.controller;
 
 import com.pblgllgs.currencyconversion.entity.CurrencyConversion;
 import com.pblgllgs.currencyconversion.proxy.CurrencyExchangeProxy;
+import org.springframework.boot.web.client.RestTemplateBuilder;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -11,17 +14,28 @@ import org.springframework.web.client.RestTemplate;
 import java.math.BigDecimal;
 import java.util.HashMap;
 
+@Configuration(proxyBeanMethods = false)
+class RestTemplateConfiguration{
+    @Bean
+    RestTemplate restTemplate(RestTemplateBuilder builder){
+        return builder.build();
+    }
+}
+
 @RestController
 public class CurrencyConversionController {
 
     private CurrencyExchangeProxy proxy;
 
-    public CurrencyConversionController(CurrencyExchangeProxy proxy) {
+    private RestTemplate restTemplate;
+
+    public CurrencyConversionController(CurrencyExchangeProxy proxy, RestTemplate restTemplate) {
         this.proxy = proxy;
+        this.restTemplate = restTemplate;
     }
 
     @GetMapping("/currency-conversion-rt/from/{from}/to/{to}/quantity/{quantity}")
-    public CurrencyConversion calculateCurrencyConvertionRestTemplate(
+    public CurrencyConversion calculateCurrencyConversionRestTemplate(
             @PathVariable("from") String from,
             @PathVariable("to") String to,
             @PathVariable("quantity") BigDecimal quantity
@@ -30,9 +44,9 @@ public class CurrencyConversionController {
         uriVariables.put("from", from);
         uriVariables.put("to", to);
 
-        ResponseEntity<CurrencyConversion> responseEntity = new RestTemplate()
+        ResponseEntity<CurrencyConversion> responseEntity = restTemplate
                 .getForEntity(
-                        "http://localhost:8000/currency-exchange/from/{from}/to/{to}"
+                        "http://currency-exchange-service:8000/currency-exchange/from/{from}/to/{to}"
                         , CurrencyConversion.class
                         , uriVariables
                 );
@@ -44,11 +58,11 @@ public class CurrencyConversionController {
                 quantity,
                 currencyConversion.getConversionMultiple(),
                 quantity.multiply(currencyConversion.getConversionMultiple()),
-                currencyConversion.getEnvironment());
+                currencyConversion.getEnvironment()+ " rest template");
     }
 
     @GetMapping("/currency-conversion-feign/from/{from}/to/{to}/quantity/{quantity}")
-    public CurrencyConversion calculateCurrencyConvertionFeign(
+    public CurrencyConversion calculateCurrencyConversionFeign(
             @PathVariable("from") String from,
             @PathVariable("to") String to,
             @PathVariable("quantity") BigDecimal quantity
@@ -63,6 +77,6 @@ public class CurrencyConversionController {
                 quantity,
                 currencyConversion.getConversionMultiple(),
                 quantity.multiply(currencyConversion.getConversionMultiple()),
-                currencyConversion.getEnvironment());
+                currencyConversion.getEnvironment() + " feign");
     }
 }
